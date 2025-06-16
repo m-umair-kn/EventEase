@@ -1,0 +1,97 @@
+@using EventEase.Models
+
+<div class="event-card">
+    <div class="event-header">
+        <h3>@Event.Name</h3>
+    </div>
+    <div class="event-body">
+        <div class="event-detail">
+            <i class="oi oi-calendar"></i>
+            <span>@Event.Date.ToShortDateString()</span>
+        </div>
+        <div class="event-detail">
+            <i class="oi oi-map-marker"></i>
+            <span>@Event.Location</span>
+        </div>
+        <div class="event-capacity">
+            <span class="@(Event.IsRegistrationOpen ? "available" : "full")">
+                @Event.CurrentAttendees / @Event.MaxAttendees spots filled
+            </span>
+        </div>
+    </div>
+    <div class="event-footer">
+        <button class="btn btn-primary" @onclick="ViewDetails">View Details</button>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Event Event { get; set; } = new Event();
+
+    [Parameter]
+    public EventCallback<int> OnViewDetails { get; set; }
+
+    private async Task ViewDetails()
+    {
+        await OnViewDetails.InvokeAsync(Event.Id);
+    }
+}
+
+<style>
+    .event-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .event-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .event-header {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .event-header h3 {
+        margin: 0;
+        color: #333;
+    }
+
+    .event-body {
+        padding: 15px;
+    }
+
+    .event-detail {
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+
+    .event-detail i {
+        margin-right: 10px;
+        color: #6c757d;
+    }
+
+    .event-capacity {
+        margin-top: 10px;
+    }
+
+    .event-capacity .available {
+        color: #28a745;
+    }
+
+    .event-capacity .full {
+        color: #dc3545;
+    }
+
+    .event-footer {
+        padding: 15px;
+        background-color: #f8f9fa;
+        text-align: right;
+    }
+</style>

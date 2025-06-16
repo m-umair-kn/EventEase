@@ -1,0 +1,315 @@
+@page "/register/{eventId:int}"
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <h1>Register for Event - @(eventData?.Name ?? "Loading...")</h1>
+            <button class="btn btn-outline-secondary mb-4" @onclick="GoBack">
+                <span>← Back to Event Details</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Registration Form</h2>
+            <p class="text-muted mb-0">@(eventData?.Name ?? "Loading event information...")</p>
+        </div>
+        <div class="card-body">
+            @if (eventData == null)
+            {
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading registration form...</p>
+                </div>
+            }
+            else if (!eventData.IsRegistrationOpen)
+            {
+                <div class="alert alert-warning">
+                    <i class="oi oi-warning"></i>
+                    This event has reached maximum capacity. Registration is closed.
+                </div>
+                <button class="btn btn-primary" @onclick="GoBack">
+                    Return to Event Details
+                </button>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger">
+                        <i class="oi oi-warning"></i>
+                        @errorMessage
+                    </div>
+                }
+
+                @if (registrationComplete)
+                {
+                    <div class="alert alert-success">
+                        <i class="oi oi-check"></i>
+                        Registration successful! You have been registered for @eventData.Name.
+                    </div>
+                    <button class="btn btn-primary" @onclick="GoToEventList">
+                        Browse More Events
+                    </button>
+                }
+                else                {
+                    <form @onsubmit="HandleRegistration" @onsubmit:preventDefault>
+                        <div class="form-group mb-3">
+                            <label for="firstName">First Name</label>
+                            <input type="text" id="firstName" class="form-control" @bind="registrationModel.FirstName" required />
+                            @if (!string.IsNullOrEmpty(firstNameError))
+                            {
+                                <div class="text-danger">@firstNameError</div>
+                            }
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" id="lastName" class="form-control" @bind="registrationModel.LastName" required />
+                            @if (!string.IsNullOrEmpty(lastNameError))
+                            {
+                                <div class="text-danger">@lastNameError</div>
+                            }
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" class="form-control" @bind="registrationModel.Email" required />
+                            @if (!string.IsNullOrEmpty(emailError))
+                            {
+                                <div class="text-danger">@emailError</div>
+                            }
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="phone">Phone Number</label>
+                            <input type="tel" id="phone" class="form-control" @bind="registrationModel.PhoneNumber" />
+                            @if (!string.IsNullOrEmpty(phoneError))
+                            {
+                                <div class="text-danger">@phoneError</div>
+                            }
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="termsAccepted" class="form-check-input" @bind="registrationModel.AcceptTerms" required />
+                            <label class="form-check-label" for="termsAccepted">
+                                I accept the terms and conditions
+                            </label>
+                            @if (!string.IsNullOrEmpty(termsError))
+                            {
+                                <div class="text-danger">@termsError</div>
+                            }
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span>Processing...</span>
+                            }
+                            else
+                            {
+                                <span>Register</span>
+                            }
+                        </button>
+                    </form>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .loading-spinner {
+        text-align: center;
+        padding: 30px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int EventId { get; set; }
+    
+    [Inject]
+    private EventService EventService { get; set; } = default!;
+    
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private Event? eventData;
+    private RegistrationModel registrationModel = new RegistrationModel();
+    private bool isSubmitting = false;
+    private bool registrationComplete = false;
+    private string errorMessage = string.Empty;
+    
+    // Form validation error messages
+    private string firstNameError = string.Empty;
+    private string lastNameError = string.Empty;
+    private string emailError = string.Empty;
+    private string phoneError = string.Empty;
+    private string termsError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            eventData = await EventService.GetEventByIdAsync(EventId);
+            
+            // If event is full, don't allow registration
+            if (eventData != null && !eventData.IsRegistrationOpen)
+            {
+                errorMessage = "Registration is closed for this event.";
+            }
+        }
+        catch (KeyNotFoundException ex)
+        {
+            errorMessage = ex.Message;
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }    private async Task HandleRegistration()
+    {
+        if (eventData == null || !eventData.IsRegistrationOpen)
+        {
+            errorMessage = "Registration is not available for this event.";
+            return;
+        }
+
+        // Clear previous error messages
+        firstNameError = string.Empty;
+        lastNameError = string.Empty;
+        emailError = string.Empty;
+        phoneError = string.Empty;
+        termsError = string.Empty;
+        errorMessage = string.Empty;
+
+        // Validate form manually
+        bool isValid = true;
+        
+        if (string.IsNullOrWhiteSpace(registrationModel.FirstName))
+        {
+            firstNameError = "First name is required";
+            isValid = false;
+        }
+        else if (registrationModel.FirstName.Length > 50)
+        {
+            firstNameError = "First name cannot exceed 50 characters";
+            isValid = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(registrationModel.LastName))
+        {
+            lastNameError = "Last name is required";
+            isValid = false;
+        }
+        else if (registrationModel.LastName.Length > 50) 
+        {
+            lastNameError = "Last name cannot exceed 50 characters";
+            isValid = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(registrationModel.Email))
+        {
+            emailError = "Email address is required";
+            isValid = false;
+        }
+        else if (!IsValidEmail(registrationModel.Email))
+        {
+            emailError = "Invalid email address";
+            isValid = false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(registrationModel.PhoneNumber) && !IsValidPhoneNumber(registrationModel.PhoneNumber))
+        {
+            phoneError = "Invalid phone number";
+            isValid = false;
+        }
+
+        if (!registrationModel.AcceptTerms)
+        {
+            termsError = "You must accept the terms and conditions";
+            isValid = false;
+        }
+
+        if (!isValid)
+        {
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            // Simulate validation and processing delay
+            await Task.Delay(1000);
+
+            // Register for event
+            var success = await EventService.RegisterForEventAsync(EventId);
+
+            if (success)
+            {
+                registrationComplete = true;
+                errorMessage = string.Empty;
+                
+                // Refresh event data to reflect updated attendance
+                eventData = await EventService.GetEventByIdAsync(EventId);
+            }
+            else
+            {
+                errorMessage = "Unable to register for this event. The event may be full.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred during registration: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo($"/event/{EventId}");
+    }
+
+    private void GoToEventList()
+    {
+        NavigationManager.NavigateTo("/");
+    }    // Registration model
+    public class RegistrationModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public bool AcceptTerms { get; set; } = false;
+    }
+
+    // Helper methods for validation
+    private bool IsValidEmail(string email)
+    {
+        try 
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool IsValidPhoneNumber(string phoneNumber)
+    {
+        // Simple validation - checks if phone has at least 7 digits
+        return System.Text.RegularExpressions.Regex.IsMatch(phoneNumber, @"\d{7,}");
+    }
+}

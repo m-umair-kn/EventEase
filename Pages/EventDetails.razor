@@ -1,0 +1,155 @@
+@page "/event/{id:int}"
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <h1>Event Details - @(eventData?.Name ?? "Loading...")</h1>
+            <button class="btn btn-outline-secondary mb-4" @onclick="GoBack">
+                <span>← Back to Events</span>
+            </button>
+        </div>
+    </div>
+
+    @if (eventData == null)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading event details...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card event-details-card">
+            <div class="card-header">
+                <h2>@eventData.Name</h2>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="detail-item">
+                            <div class="detail-label">
+                                <i class="oi oi-calendar"></i> Date
+                            </div>
+                            <div class="detail-value">
+                                @eventData.Date.ToString("MMMM d, yyyy 'at' h:mm tt")
+                            </div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">
+                                <i class="oi oi-map-marker"></i> Location
+                            </div>
+                            <div class="detail-value">
+                                @eventData.Location
+                            </div>
+                        </div>                        <div class="detail-item">
+                            <div class="detail-label">
+                                <i class="oi oi-people"></i> Capacity
+                            </div>                            <div class="detail-value">
+                                <span class="@(eventData.IsRegistrationOpen ? "text-success" : "text-danger")">
+                                    @eventData.CurrentAttendees / @eventData.MaxAttendees spots filled
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-item">
+                            <div class="detail-label">
+                                <i class="oi oi-info"></i> Description
+                            </div>
+                            <div class="detail-value description">
+                                @eventData.Description
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary" 
+                        disabled="@(!eventData.IsRegistrationOpen)"
+                        @onclick="NavigateToRegistration">
+                    @(eventData.IsRegistrationOpen ? "Register Now" : "Registration Closed")
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .event-details-card {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    .detail-item {
+        margin-bottom: 20px;
+    }
+
+    .detail-label {
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 5px;
+    }
+
+    .detail-label i {
+        margin-right: 5px;
+    }
+
+    .detail-value {
+        color: #333;
+    }
+
+    .detail-value.description {
+        line-height: 1.6;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 30px;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    [Inject]
+    private EventService EventService { get; set; } = default!;
+    
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
+    private Event? eventData;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            eventData = await EventService.GetEventByIdAsync(Id);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            errorMessage = ex.Message;
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void NavigateToRegistration()
+    {
+        if (eventData != null && eventData.IsRegistrationOpen)
+        {
+            NavigationManager.NavigateTo($"/register/{Id}");
+        }
+    }
+}

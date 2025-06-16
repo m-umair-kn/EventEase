@@ -1,0 +1,50 @@
+@using EventEase.Models
+@inject EventService EventService
+
+<div class="attendance-tracker">
+    <h4>Event Attendance</h4>
+    <div class="progress mb-2">
+        <div class="progress-bar bg-success" role="progressbar" 
+             style="width: @ProgressPercentage%" 
+             aria-valuenow="@ProgressPercentage" aria-valuemin="0" aria-valuemax="100">
+            @($"{Event.CurrentAttendees}/{Event.MaxAttendees}")
+        </div>
+    </div>
+    <div class="attendance-stats">
+        <span class="@(Event.IsRegistrationOpen ? "text-success" : "text-danger")">
+            @StatusText
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Event Event { get; set; } = new Event();
+
+    private int ProgressPercentage => Event.MaxAttendees > 0 
+        ? (int)Math.Round((double)Event.CurrentAttendees / Event.MaxAttendees * 100) 
+        : 0;
+
+    private string StatusText => Event.IsRegistrationOpen 
+        ? $"{Event.MaxAttendees - Event.CurrentAttendees} spots remaining" 
+        : "Event is full";
+}
+
+<style>
+    .attendance-tracker {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .attendance-tracker h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+    
+    .attendance-stats {
+        font-size: 0.9rem;
+        text-align: right;
+    }
+</style>
